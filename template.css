@@ -1,3 +1,91 @@
-.MMM-Template div {
+.MMM-MagicDraw div {
     color: purple;
+}
+
+#drawing-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+#shape-controls {
+  position: fixed;
+  top: 60px;
+  right: 100px;
+  z-index: 1000;
+  display: flex;
+  gap: 10px;
+  background-color: rgba(51, 51, 51, 0.9);
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  align-items: center;
+}
+
+#shape-selector,
+#text-input,
+#font-size-input {
+  padding: 5px;
+  border-radius: 4px;
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #666;
+}
+
+#text-input {
+  width: 150px;
+}
+
+#font-size-input {
+  width: 60px;
+}
+
+#shape-selector option {
+  background-color: #333;
+  color: #fff;
+}
+
+#konva-container {
+  border: 50px solid #666;
+  background-color: #ffffff;
+  box-sizing: border-box;
+  margin: auto;
+}
+
+#undo-button,
+#clear-button {
+  padding: 5px 10px;
+  border-radius: 4px;
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #666;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 5px;
+}
+
+#clear-button {
+  background-color: #633;  /* Slightly reddish background to indicate destructive action */
+}
+
+#undo-button:hover,
+#clear-button:hover {
+  background-color: #444;
+}
+
+#clear-button:hover {
+  background-color: #744;
+}
+
+#undo-button:active,
+#clear-button:active {
+  background-color: #222;
+}
+
+#clear-button:active {
+  background-color: #522;
 }
