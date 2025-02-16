@@ -11,7 +11,7 @@ Drawing board for Magic Mirror with touch interactive UI interface
 | Working | `1.0.0` | 2023-12-07 | YES |
 
 
-<img src="https://github.com/ivlovric/MMM-MagicDraw/MagicDraw.png" width="750" height="450">
+<img src="https://github.com/ivlovric/MMM-MagicDraw/blob/main/MagicDraw.png" width="750" height="450">
 
 ## Installation
 
