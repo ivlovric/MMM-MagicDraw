@@ -1,11 +1,16 @@
-# MMM-MagicDraw
-Use this template for creating new MagicMirror² modules.
+This is a module for the [MagicMirror²](https://github.com/MichMich/MagicMirror/).
 
-See the [wiki page](https://github.com/Dennis-Rosenbaum/MMM-MagicDraw/wiki) for an in depth overview of how to get started.
+[![MagicMirror2](https://img.shields.io/badge/MagicMirror-2.2.2-lightgray.svg)](https://github.com/MichMich/MagicMirror)
+[![GitHub last commit](https://img.shields.io/github/last-commit/ivlovric/MMM-MagicReplicator/main)](https://github.com/ivlovric/MMM-MagicReplicator)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/ivlovric/MMM-MagicReplicator/graphs/commit-activity)
 
-# MMM-MagicDraw
+Drawng board for Magic Mirror for touch interfaces with interactive UI
 
-![Example of MMM-MagicDraw](./example_1.png)
+
+
+| STATUS: | Version | Date | Maintained? |
+|:------- |:------- |:---- |:----------- |
+| Experimental | `1.0.0` | 2025-Feb-16 | NO |
 
 [Module description]
 
@@ -34,21 +39,10 @@ To use this module, add it to the modules array in the `config/config.js` file:
 ```js
     {
         module: 'MMM-MagicDraw',
-        position: 'lower_third'
+        position: 'fullscreen_above'
     },
 ```
 
-Or you could use all the options:
-
-```js
-    {
-        module: 'MMM-MagicDraw',
-        position: 'lower_third',
-        config: {
-            exampleContent: 'Welcome world'
-        }
-    },
-```
 
 ## Configuration options
 

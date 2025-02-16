@@ -47,6 +47,53 @@ Module.register("MMM-MagicDraw", {
     if (notification === "EXAMPLE_NOTIFICATION") {
       this.templateContent = `${this.config.exampleContent} ${payload.text}`
       this.updateDom()
+    } else if (notification === 'STATE_LOADED') {
+      this.log('Received saved state from helper')
+      if (payload && this.layer) {
+        try {
+          payload.shapes.forEach(shapeData => {
+            let shape
+            
+            if (shapeData.className === 'Label') {
+              shape = new Konva.Label({
+                x: shapeData.attrs.x,
+                y: shapeData.attrs.y,
+                draggable: true
+              })
+
+              shapeData.children.forEach(childData => {
+                let child
+                if (childData.className === 'Tag') {
+                  child = new Konva.Tag(childData.attrs)
+                } else if (childData.className === 'Text') {
+                  child = new Konva.Text(childData.attrs)
+                }
+                if (child) {
+                  shape.add(child)
+                }
+              })
+            } else {
+              const ShapeClass = Konva[shapeData.className]
+              if (ShapeClass) {
+                shape = new ShapeClass(shapeData.attrs)
+                if (shapeData.className === 'Text') {
+                  shape.draggable(true)
+                }
+              }
+            }
+
+            if (shape) {
+              this.layer.add(shape)
+              this.history.push(shape)
+            }
+          })
+          
+          this.layer.batchDraw()
+          this.log('Canvas state restored with ' + this.history.length + ' shapes')
+        } catch (error) {
+          this.logError('Error restoring canvas state: ' + error.toString())
+        }
+      }
     }
   },
 
@@ -267,7 +314,8 @@ Module.register("MMM-MagicDraw", {
 
     // Load saved state after initializing stage
     setTimeout(() => {
-      this.loadCanvasState()
+      this.sendSocketNotification('LOAD_STATE')
+      this.log('Requesting saved state from helper')
     }, 200)
 
     // Modified drawing functionality
@@ -539,66 +587,11 @@ Module.register("MMM-MagicDraw", {
             return baseData
           })
         }
-        const stateString = JSON.stringify(state)
-        localStorage.setItem(this.config.storageKey, stateString)
-        this.log('Canvas state saved with ' + this.history.length + ' shapes')
+        this.sendSocketNotification('SAVE_STATE', state)
+        this.log('Sending canvas state to helper with ' + this.history.length + ' shapes')
       } catch (error) {
-        this.logError('Error saving canvas state: ' + error.toString())
+        this.logError('Error preparing canvas state: ' + error.toString())
       }
-    }
-  },
-
-  loadCanvasState() {
-    const savedState = localStorage.getItem(this.config.storageKey)
-    this.log('Loading saved state...')
-    
-    if (savedState) {
-      try {
-        const state = JSON.parse(savedState)
-        state.shapes.forEach(shapeData => {
-          let shape
-          
-          if (shapeData.className === 'Label') {
-            shape = new Konva.Label({
-              x: shapeData.attrs.x,
-              y: shapeData.attrs.y,
-              draggable: true
-            })
-
-            shapeData.children.forEach(childData => {
-              let child
-              if (childData.className === 'Tag') {
-                child = new Konva.Tag(childData.attrs)
-              } else if (childData.className === 'Text') {
-                child = new Konva.Text(childData.attrs)
-              }
-              if (child) {
-                shape.add(child)
-              }
-            })
-          } else {
-            const ShapeClass = Konva[shapeData.className]
-            if (ShapeClass) {
-              shape = new ShapeClass(shapeData.attrs)
-              if (shapeData.className === 'Text') {
-                shape.draggable(true)
-              }
-            }
-          }
-
-          if (shape) {
-            this.layer.add(shape)
-            this.history.push(shape)
-          }
-        })
-        
-        this.layer.batchDraw()
-        this.log('Canvas state restored with ' + this.history.length + ' shapes')
-      } catch (error) {
-        this.logError('Error loading canvas state: ' + error.toString())
-      }
-    } else {
-      this.log('No saved state found')
     }
   },
 
