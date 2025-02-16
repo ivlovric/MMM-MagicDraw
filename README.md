@@ -1,8 +1,8 @@
 This is a module for the [MagicMirror²](https://github.com/MichMich/MagicMirror/).
 
 [![MagicMirror2](https://img.shields.io/badge/MagicMirror-2.2.2-lightgray.svg)](https://github.com/MichMich/MagicMirror)
-[![GitHub last commit](https://img.shields.io/github/last-commit/ivlovric/MMM-MagicReplicator/main)](https://github.com/ivlovric/MMM-MagicReplicator)
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/ivlovric/MMM-MagicReplicator/graphs/commit-activity)
+[![GitHub last commit](https://img.shields.io/github/last-commit/ivlovric/MMM-MagicDraw/main)](https://github.com/ivlovric/MMM-MagicDraw)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/ivlovric/MMM-MagicDraw/graphs/commit-activity)
 
 Drawng board for Magic Mirror for touch interfaces with interactive UI
 
