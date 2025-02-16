@@ -7,7 +7,8 @@ Module.register("MMM-MagicDraw", {
     textColor: '#000000',
     labelBackgroundColor: '#633333',
     pointerDirection: 'down',
-    storageKey: 'MMM-MagicDraw-state'  // Key for localStorage
+    storageKey: 'MMM-MagicDraw-state',  // Key for localStorage
+    currentColor: '#000000'  // Add default current color
   },
 
   /**
@@ -105,11 +106,9 @@ Module.register("MMM-MagicDraw", {
     const wrapper = document.createElement("div")
     wrapper.id = "drawing-container"
     
-    // Create controls container
     const controls = document.createElement("div")
     controls.id = "shape-controls"
     
-    // Create text input first
     const textInput = document.createElement("input")
     textInput.type = "text"
     textInput.id = "text-input"
@@ -121,7 +120,6 @@ Module.register("MMM-MagicDraw", {
     keyboardContainer.style.display = "none"
     this.log("Keyboard container created and hidden by default")
     
-    // Create keyboard layout
     const rows = [
       ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
       ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -220,14 +218,15 @@ Module.register("MMM-MagicDraw", {
       this.config.pointerDirection = e.target.value
     })
 
-    // Color picker for label background
+    // Modify color picker to update global color
     const colorPicker = document.createElement("input")
     colorPicker.type = "color"
     colorPicker.id = "color-picker"
-    colorPicker.value = this.config.labelBackgroundColor
+    colorPicker.value = this.config.currentColor
     
     colorPicker.addEventListener('change', (e) => {
-      this.config.labelBackgroundColor = e.target.value
+      this.config.currentColor = e.target.value
+      this.log(`Color changed to: ${this.config.currentColor}`)
     })
     
     // Font size input
@@ -310,8 +309,33 @@ Module.register("MMM-MagicDraw", {
       height: 100
     })
 
+    // Create background layer
+    this.backgroundLayer = new Konva.Layer()
     this.layer = new Konva.Layer()
+    
+    // Add layers in correct order
+    this.stage.add(this.backgroundLayer)
     this.stage.add(this.layer)
+
+    // Set the background color with slight transparency
+    const background = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: this.stage.width(),
+      height: this.stage.height(),
+      fill: '#f7e8d0',
+      opacity: 0.5
+    })
+
+    this.backgroundLayer.add(background)
+    this.backgroundLayer.draw()
+
+    // Update background size when stage resizes
+    this.stage.on('resize', () => {
+      background.width(this.stage.width())
+      background.height(this.stage.height())
+      this.backgroundLayer.draw()
+    })
 
     this.stage.on('mousedown touchstart', () => {
       this.isDrawing = true
@@ -320,7 +344,7 @@ Module.register("MMM-MagicDraw", {
       switch(this.config.currentShape) {
         case 'freehand':
           this.lastLine = new Konva.Line({
-            stroke: '#000000',
+            stroke: this.config.currentColor,  // Use current color
             strokeWidth: 2,
             points: [this.startPos.x, this.startPos.y, this.startPos.x, this.startPos.y],
             lineCap: 'round',
@@ -335,7 +359,7 @@ Module.register("MMM-MagicDraw", {
             y: this.startPos.y,
             width: 0,
             height: 0,
-            stroke: '#000000',
+            stroke: this.config.currentColor,  // Use current color
             strokeWidth: 2
           })
           break;
@@ -345,7 +369,7 @@ Module.register("MMM-MagicDraw", {
             x: this.startPos.x,
             y: this.startPos.y,
             radius: 0,
-            stroke: '#000000',
+            stroke: this.config.currentColor,  // Use current color
             strokeWidth: 2
           })
           break;
@@ -353,7 +377,7 @@ Module.register("MMM-MagicDraw", {
         case 'line':
           this.currentShape = new Konva.Line({
             points: [this.startPos.x, this.startPos.y, this.startPos.x, this.startPos.y],
-            stroke: '#000000',
+            stroke: this.config.currentColor,  // Use current color
             strokeWidth: 2,
             lineCap: 'round',
             lineJoin: 'round'
@@ -369,7 +393,7 @@ Module.register("MMM-MagicDraw", {
               y: this.startPos.y,
               text: text,
               fontSize: this.config.fontSize,
-              fill: this.config.textColor,
+              fill: this.config.currentColor,  // Use current color
               draggable: true
             })
             this.layer.add(this.currentShape)
@@ -396,7 +420,7 @@ Module.register("MMM-MagicDraw", {
 
             // Add background
             label.add(new Konva.Tag({
-              fill: this.config.labelBackgroundColor,
+              fill: this.config.currentColor,  // Use current color
               lineJoin: 'round',
               pointerDirection: this.config.pointerDirection,
               pointerWidth: 20,
@@ -415,18 +439,18 @@ Module.register("MMM-MagicDraw", {
               fontFamily: 'Calibri',
               fontSize: this.config.fontSize,
               padding: 5,
-              fill: this.config.textColor,
+              fill: '#ffffff',  // Keep text white for contrast
             }));
 
-            this.layer.add(label);
-            this.layer.batchDraw();
+            this.layer.add(label)
+            this.layer.batchDraw()
             this.history.push(label)
             this.saveCanvasState()
             this.log('Label added and state saved')
             
-            textInputLabel.value = '';
+            textInputLabel.value = ''
           }
-          this.isDrawing = false;
+          this.isDrawing = false
           break;
       }
       
@@ -505,22 +529,7 @@ Module.register("MMM-MagicDraw", {
     }, 200)
   },
 
-  addRandomText() {
-    this.sendSocketNotification("GET_RANDOM_TEXT", { amountCharacters: 15 })
-  },
 
-  /**
-   * This is the place to receive notifications from other modules or the system.
-   *
-   * @param {string} notification The notification ID, it is preferred that it prefixes your module name
-   * @param {number} payload the payload type.
-   */
-  notificationReceived(notification, payload) {
-    if (notification === "TEMPLATE_RANDOM_TEXT") {
-      this.templateContent = `${this.config.exampleContent} ${payload}`
-      this.updateDom()
-    }
-  },
 
   stop() {
     this.log('Stopping module')

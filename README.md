@@ -7,13 +7,6 @@ This is a module for the [MagicMirror²](https://github.com/MichMich/MagicMirror
 Drawng board for Magic Mirror for touch interfaces with interactive UI
 
 
-
-| STATUS: | Version | Date | Maintained? |
-|:------- |:------- |:---- |:----------- |
-| Experimental | `1.0.0` | 2025-Feb-16 | NO |
-
-[Module description]
-
 ## Installation
 
 ### Install
@@ -22,7 +15,7 @@ In your terminal, go to your [MagicMirror²][mm] Module folder and clone MMM-Mag
 
 ```bash
 cd ~/MagicMirror/modules
-git clone [GitHub url]
+git clone https://github.com/ivlovric/MMM-MagicDraw.git
 ```
 
 ### Update
@@ -46,9 +39,7 @@ To use this module, add it to the modules array in the `config/config.js` file:
 
 ## Configuration options
 
-Option|Possible values|Default|Description
-------|------|------|-----------
-`exampleContent`|`string`|not available|The content to show on the page
+None
 
 ## Sending notifications to the module
 
