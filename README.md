@@ -8,7 +8,7 @@ Drawing board for Magic Mirror with touch interactive UI interface
 
 | STATUS: | Version | Date | Maintained? |
 |:------- |:------- |:---- |:----------- |
-| Working | `1.0.0` | 2023-12-07 | YES |
+| Experimental | `1.0.0` | 2025-Feb-16 | YES |
 
 
 <img src="https://github.com/ivlovric/MMM-MagicDraw/blob/main/MagicDraw.png" width="750" height="450">
