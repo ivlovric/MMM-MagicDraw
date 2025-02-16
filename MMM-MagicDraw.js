@@ -21,7 +21,7 @@ Module.register("MMM-MagicDraw", {
    * Pseudo-constructor for our module. Initialize stuff here.
    */
   start() {
-    this.log('Starting MagicDraw module')
+    this.log('Starting module')
     this.stage = null
     this.layer = null
     this.isDrawing = false
@@ -48,7 +48,7 @@ Module.register("MMM-MagicDraw", {
       this.templateContent = `${this.config.exampleContent} ${payload.text}`
       this.updateDom()
     } else if (notification === 'STATE_LOADED') {
-      this.log('Received saved state from helper')
+      this.log('Received saved state')
       if (payload && this.layer) {
         try {
           payload.shapes.forEach(shapeData => {
@@ -89,9 +89,9 @@ Module.register("MMM-MagicDraw", {
           })
           
           this.layer.batchDraw()
-          this.log('Canvas state restored with ' + this.history.length + ' shapes')
+          this.log(`Restored canvas state with ${this.history.length} shapes`)
         } catch (error) {
-          this.logError('Error restoring canvas state: ' + error.toString())
+          this.logError(`Error restoring canvas state: ${error.toString()}`)
         }
       }
     }
@@ -303,6 +303,7 @@ Module.register("MMM-MagicDraw", {
   },
 
   initKonva() {
+    this.log('Initializing Konva stage')
     this.stage = new Konva.Stage({
       container: 'konva-container',
       width: 100,
@@ -312,13 +313,6 @@ Module.register("MMM-MagicDraw", {
     this.layer = new Konva.Layer()
     this.stage.add(this.layer)
 
-    // Load saved state after initializing stage
-    setTimeout(() => {
-      this.sendSocketNotification('LOAD_STATE')
-      this.log('Requesting saved state from helper')
-    }, 200)
-
-    // Modified drawing functionality
     this.stage.on('mousedown touchstart', () => {
       this.isDrawing = true
       this.startPos = this.stage.getPointerPosition()
@@ -381,8 +375,9 @@ Module.register("MMM-MagicDraw", {
             this.layer.add(this.currentShape)
             this.layer.batchDraw()
             this.history.push(this.currentShape)
+            this.saveCanvasState()
+            this.log('Text added and state saved')
             
-            // Clear the input after adding text
             textInput.value = ''
           }
           this.isDrawing = false
@@ -426,8 +421,9 @@ Module.register("MMM-MagicDraw", {
             this.layer.add(label);
             this.layer.batchDraw();
             this.history.push(label)
+            this.saveCanvasState()
+            this.log('Label added and state saved')
             
-            // Clear the input after adding label
             textInputLabel.value = '';
           }
           this.isDrawing = false;
@@ -478,7 +474,9 @@ Module.register("MMM-MagicDraw", {
 
     this.stage.on('mouseup touchend', () => {
       if (this.currentShape) {
-        this.history.push(this.currentShape)  // Add shape to history
+        this.history.push(this.currentShape)
+        this.saveCanvasState()
+        this.log('New shape added and state saved')
       }
       this.isDrawing = false
       this.currentShape = null
@@ -499,6 +497,12 @@ Module.register("MMM-MagicDraw", {
         this.layer.batchDraw();
       }
     });
+
+    // Load saved state after initializing stage
+    setTimeout(() => {
+      this.sendSocketNotification('LOAD_STATE')
+      this.log('Requesting saved state from helper')
+    }, 200)
   },
 
   addRandomText() {
@@ -519,7 +523,7 @@ Module.register("MMM-MagicDraw", {
   },
 
   stop() {
-    this.log('Stopping MagicDraw module')
+    this.log('Stopping module')
     window.removeEventListener('resize', this.updateDimensions)
     window.removeEventListener('beforeunload', this.saveCanvasState)
     this.saveCanvasState()
@@ -549,22 +553,21 @@ Module.register("MMM-MagicDraw", {
       const lastShape = this.history.pop()
       lastShape.destroy()
       this.layer.batchDraw()
+      this.saveCanvasState()
+      this.log('Undo performed and state saved')
     }
   },
 
   clearAll() {
-    // Remove all shapes from history
+    const shapeCount = this.history.length
     while(this.history.length > 0) {
       const shape = this.history.pop()
       shape.destroy()
     }
-    // Clear the layer
     this.layer.clear()
     this.layer.batchDraw()
-    
-    // Clear saved state
-    localStorage.removeItem(this.config.storageKey)
-    this.log('Canvas cleared and saved state removed')
+    this.saveCanvasState()
+    this.log(`Canvas cleared of ${shapeCount} shapes and state saved`)
   },
 
   saveCanvasState() {
@@ -588,16 +591,16 @@ Module.register("MMM-MagicDraw", {
           })
         }
         this.sendSocketNotification('SAVE_STATE', state)
-        this.log('Sending canvas state to helper with ' + this.history.length + ' shapes')
+        this.log(`Saving canvas state with ${this.history.length} shapes`)
       } catch (error) {
-        this.logError('Error preparing canvas state: ' + error.toString())
+        this.logError(`Error preparing canvas state: ${error.toString()}`)
       }
     }
   },
 
   // Add log prefix
   getLogPrefix() {
-    return `Module ${this.name}: `;
+    return `${this.name}: `;
   },
 
   // Add logging methods
