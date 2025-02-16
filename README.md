@@ -6,6 +6,12 @@ This is a module for the [MagicMirror²](https://github.com/MichMich/MagicMirror
 
 Drawing board for Magic Mirror with touch interactive UI interface
 
+| STATUS: | Version | Date | Maintained? |
+|:------- |:------- |:---- |:----------- |
+| Working | `1.0.0` | 2023-12-07 | YES |
+
+
+<img src="https://github.com/ivlovric/MMM-MagicDraw/MagicDraw.png" width="750" height="450">
 
 ## Installation
 

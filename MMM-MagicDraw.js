@@ -8,7 +8,8 @@ Module.register("MMM-MagicDraw", {
     labelBackgroundColor: '#633333',
     pointerDirection: 'down',
     storageKey: 'MMM-MagicDraw-state',  // Key for localStorage
-    currentColor: '#000000'  // Add default current color
+    currentColor: '#000000',  // Add default current color
+    fillColor: '#ffffff'  // Default fill color
   },
 
   /**
@@ -52,7 +53,24 @@ Module.register("MMM-MagicDraw", {
       this.log('Received saved state')
       if (payload && this.layer) {
         try {
+          // Clear existing state
+          while(this.history.length > 0) {
+            const shape = this.history.pop()
+            shape.destroy()
+          }
+          this.layer.destroyChildren()
+          this.layer.clear()
+          
+          // Track loaded shape IDs to prevent duplicates
+          const loadedShapeIds = new Set()
+          
           payload.shapes.forEach(shapeData => {
+            // Skip if we've already loaded this shape
+            if (loadedShapeIds.has(shapeData.id)) {
+              this.log(`Skipping duplicate shape with ID: ${shapeData.id}`)
+              return
+            }
+            
             let shape
             
             if (shapeData.className === 'Label') {
@@ -84,8 +102,10 @@ Module.register("MMM-MagicDraw", {
             }
 
             if (shape) {
+              shape._id = shapeData.id // Store the ID
               this.layer.add(shape)
               this.history.push(shape)
+              loadedShapeIds.add(shapeData.id)
             }
           })
           
@@ -109,10 +129,80 @@ Module.register("MMM-MagicDraw", {
     const controls = document.createElement("div")
     controls.id = "shape-controls"
     
-    const textInput = document.createElement("input")
-    textInput.type = "text"
-    textInput.id = "text-input"
-    textInput.placeholder = "Enter text..."
+    // Add label for fill color
+    const fillColorLabel = document.createElement("label")
+    fillColorLabel.innerHTML = "Fill Color:"
+    controls.appendChild(fillColorLabel)
+
+    // Add fill color picker
+    const fillColorPicker = document.createElement("input")
+    fillColorPicker.type = "color"
+    fillColorPicker.id = "fill-color-picker"
+    fillColorPicker.value = this.config.fillColor || '#ffffff'  // Default fill color
+    fillColorPicker.addEventListener('change', (e) => {
+      this.config.fillColor = e.target.value
+      this.log(`Fill color changed to: ${this.config.fillColor}`)
+    })
+    controls.appendChild(fillColorPicker)
+
+    // Add label for stroke color
+    const strokeColorLabel = document.createElement("label")
+    strokeColorLabel.innerHTML = "Stroke Color:"
+    controls.appendChild(strokeColorLabel)
+
+    // Add stroke color picker
+    const strokeColorPicker = document.createElement("input")
+    strokeColorPicker.type = "color"
+    strokeColorPicker.id = "stroke-color-picker"
+    strokeColorPicker.value = this.config.currentColor || '#000000'  // Default stroke color
+    strokeColorPicker.addEventListener('change', (e) => {
+      this.config.currentColor = e.target.value
+      this.log(`Stroke color changed to: ${this.config.currentColor}`)
+    })
+    controls.appendChild(strokeColorPicker)
+
+    // Add label for arrow direction
+    const arrowDirectionLabel = document.createElement("label")
+    arrowDirectionLabel.innerHTML = "Arrow Direction:"
+    controls.appendChild(arrowDirectionLabel)
+
+    // Add arrow direction options
+    const arrowDirectionSelect = document.createElement("select")
+    arrowDirectionSelect.id = "arrow-direction-selector"
+    const directions = ['up', 'down', 'left', 'right']
+    directions.forEach(direction => {
+      const option = document.createElement("option")
+      option.value = direction
+      option.text = direction.charAt(0).toUpperCase() + direction.slice(1)
+      arrowDirectionSelect.appendChild(option)
+    })
+    arrowDirectionSelect.addEventListener('change', (e) => {
+      this.config.pointerDirection = e.target.value
+      this.log(`Arrow direction changed to: ${this.config.pointerDirection}`)
+    })
+    controls.appendChild(arrowDirectionSelect)
+
+    // Add shape selector
+    const shapeSelector = document.createElement("select")
+    shapeSelector.id = "shape-selector"
+    const shapes = ['select', 'freehand', 'rectangle', 'circle', 'line', 'text', 'label', 'star', 'ring']
+    shapes.forEach(shape => {
+      const option = document.createElement("option")
+      option.value = shape
+      option.text = shape.charAt(0).toUpperCase() + shape.slice(1)
+      shapeSelector.appendChild(option)
+    })
+    
+    shapeSelector.addEventListener('change', (e) => {
+      this.config.currentShape = e.target.value
+      if (e.target.value === 'select') {
+        this.stage.container().style.cursor = 'pointer';  // Change cursor for selection
+      } else {
+        this.stage.container().style.cursor = 'crosshair';  // Change cursor for drawing
+      }
+    })
+
+    controls.appendChild(shapeSelector)
     
     // Create keyboard container
     const keyboardContainer = document.createElement("div")
@@ -185,51 +275,13 @@ Module.register("MMM-MagicDraw", {
     specialRow.appendChild(doneKey)
     keyboardContainer.appendChild(specialRow)
     
-    // Shape selector
-    const shapeSelector = document.createElement("select")
-    shapeSelector.id = "shape-selector"
-    const shapes = ['freehand', 'rectangle', 'circle', 'line', 'text', 'label']
-    shapes.forEach(shape => {
-      const option = document.createElement("option")
-      option.value = shape
-      option.text = shape.charAt(0).toUpperCase() + shape.slice(1)
-      shapeSelector.appendChild(option)
-    })
+    // Add text input
+    const textInput = document.createElement("input")
+    textInput.type = "text"
+    textInput.id = "text-input"
+    textInput.placeholder = "Enter text..."
     
-    shapeSelector.addEventListener('change', (e) => {
-      this.config.currentShape = e.target.value
-    })
-    
-    // Arrow direction selector
-    const arrowSelector = document.createElement("select")
-    arrowSelector.id = "arrow-selector"
-    const directions = ['none', 'left', 'right', 'up', 'down']
-    directions.forEach(direction => {
-      const option = document.createElement("option")
-      option.value = direction
-      option.text = direction.charAt(0).toUpperCase() + direction.slice(1)
-      if (direction === 'down') {
-        option.selected = true
-      }
-      arrowSelector.appendChild(option)
-    })
-    
-    arrowSelector.addEventListener('change', (e) => {
-      this.config.pointerDirection = e.target.value
-    })
-
-    // Modify color picker to update global color
-    const colorPicker = document.createElement("input")
-    colorPicker.type = "color"
-    colorPicker.id = "color-picker"
-    colorPicker.value = this.config.currentColor
-    
-    colorPicker.addEventListener('change', (e) => {
-      this.config.currentColor = e.target.value
-      this.log(`Color changed to: ${this.config.currentColor}`)
-    })
-    
-    // Font size input
+    // Add font size input
     const fontSizeInput = document.createElement("input")
     fontSizeInput.type = "number"
     fontSizeInput.id = "font-size-input"
@@ -247,20 +299,67 @@ Module.register("MMM-MagicDraw", {
     undoButton.innerHTML = "Undo"
     undoButton.addEventListener('click', () => this.undo())
     
-    // Add clear all button
+    // Add clear all button with confirmation
     const clearButton = document.createElement("button")
     clearButton.id = "clear-button"
     clearButton.innerHTML = "Clear All"
-    clearButton.addEventListener('click', () => this.clearAll())
+    clearButton.addEventListener('click', () => {
+      // Create confirmation dialog
+      const confirmDialog = document.createElement("div")
+      confirmDialog.id = "confirm-dialog"
+      confirmDialog.innerHTML = `
+        <div class="confirm-content">
+          <p>Are you sure you want to clear all drawings?</p>
+          <div class="confirm-buttons">
+            <button id="confirm-yes">Yes</button>
+            <button id="confirm-no">No</button>
+          </div>
+        </div>
+      `
+      
+      // Add dialog to wrapper
+      wrapper.appendChild(confirmDialog)
+      
+      // Show dialog with fade in
+      setTimeout(() => {
+        confirmDialog.classList.add('visible')
+      }, 10)
+      
+      // Handle confirmation buttons
+      document.getElementById('confirm-yes').addEventListener('click', () => {
+        this.clearAll()  // Call the clearAll method
+        confirmDialog.classList.remove('visible')
+        setTimeout(() => {
+          confirmDialog.remove()
+        }, 300)
+        this.log('Clear all confirmed and executed')
+      })
+      
+      document.getElementById('confirm-no').addEventListener('click', () => {
+        confirmDialog.classList.remove('visible')
+        setTimeout(() => {
+          confirmDialog.remove()
+        }, 300)
+        this.log('Clear all cancelled')
+      })
+      
+      // Close on outside click
+      confirmDialog.addEventListener('click', (e) => {
+        if (e.target === confirmDialog) {
+          confirmDialog.classList.remove('visible')
+          setTimeout(() => {
+            confirmDialog.remove()
+          }, 300)
+          this.log('Clear all cancelled by outside click')
+        }
+      })
+    })
     
     // Add all controls to the container in correct order
     controls.appendChild(undoButton)
     controls.appendChild(clearButton)
-    controls.appendChild(shapeSelector)
     controls.appendChild(textInput)
     controls.appendChild(fontSizeInput)
-    controls.appendChild(arrowSelector)
-    controls.appendChild(colorPicker)
     
     // Create container for Konva stage
     const container = document.createElement("div")
@@ -338,6 +437,10 @@ Module.register("MMM-MagicDraw", {
     })
 
     this.stage.on('mousedown touchstart', () => {
+      if (this.config.currentShape === 'select') {
+        return
+      }
+
       this.isDrawing = true
       this.startPos = this.stage.getPointerPosition()
 
@@ -452,18 +555,53 @@ Module.register("MMM-MagicDraw", {
           }
           this.isDrawing = false
           break;
+        
+        case 'star':
+          this.currentShape = new Konva.Star({
+            x: this.startPos.x,
+            y: this.startPos.y,
+            numPoints: 5,
+            innerRadius: 0,
+            outerRadius: 0,
+            stroke: this.config.currentColor,
+            fill: this.config.fillColor,  // Use fill color
+            strokeWidth: 2,
+            draggable: true
+          })
+          break
+          
+        case 'ring':
+          this.currentShape = new Konva.Ring({
+            x: this.startPos.x,
+            y: this.startPos.y,
+            innerRadius: 0,
+            outerRadius: 0,
+            stroke: this.config.currentColor,
+            fill: this.config.fillColor,  // Use fill color
+            strokeWidth: 2,
+            draggable: true
+          })
+          break
       }
       
       if (this.currentShape && !['text', 'label'].includes(this.config.currentShape)) {
         this.layer.add(this.currentShape)
+        
+        // Add click handler for selection
+        this.currentShape.on('click tap', (e) => {
+          e.cancelBubble = true
+          this.selectShape(this.currentShape)
+        })
       }
     })
 
-    this.stage.on('mousemove touchmove', () => {
-      if (!this.isDrawing) return
+    this.stage.on('mousemove touchmove', (e) => {
+      if (!this.isDrawing) {
+        return
+      }
 
       const pos = this.stage.getPointerPosition()
-
+      
       switch(this.config.currentShape) {
         case 'freehand':
           const points = this.lastLine.points()
@@ -491,6 +629,24 @@ Module.register("MMM-MagicDraw", {
         case 'text':
           // Text doesn't need mousemove handling
           break
+        
+        case 'star':
+          const starRadius = Math.sqrt(
+            Math.pow(pos.x - this.startPos.x, 2) +
+            Math.pow(pos.y - this.startPos.y, 2)
+          )
+          this.currentShape.innerRadius(starRadius * 0.5)
+          this.currentShape.outerRadius(starRadius)
+          break
+          
+        case 'ring':
+          const ringRadius = Math.sqrt(
+            Math.pow(pos.x - this.startPos.x, 2) +
+            Math.pow(pos.y - this.startPos.y, 2)
+          )
+          this.currentShape.innerRadius(ringRadius * 0.5)
+          this.currentShape.outerRadius(ringRadius)
+          break
       }
       
       this.layer.batchDraw()
@@ -498,9 +654,11 @@ Module.register("MMM-MagicDraw", {
 
     this.stage.on('mouseup touchend', () => {
       if (this.currentShape) {
+        // Add unique ID to new shapes
+        this.currentShape._id = Date.now() + Math.random().toString(36).substr(2, 9)
         this.history.push(this.currentShape)
         this.saveCanvasState()
-        this.log('New shape added and state saved')
+        this.log('New shape added with ID: ' + this.currentShape._id)
       }
       this.isDrawing = false
       this.currentShape = null
@@ -524,12 +682,10 @@ Module.register("MMM-MagicDraw", {
 
     // Load saved state after initializing stage
     setTimeout(() => {
-      this.sendSocketNotification('LOAD_STATE')
+      this.loadCanvasState()
       this.log('Requesting saved state from helper')
     }, 200)
   },
-
-
 
   stop() {
     this.log('Stopping module')
@@ -568,25 +724,49 @@ Module.register("MMM-MagicDraw", {
   },
 
   clearAll() {
-    const shapeCount = this.history.length
+    this.log('Clearing all shapes')
+    // Clear history and destroy all shapes
     while(this.history.length > 0) {
       const shape = this.history.pop()
       shape.destroy()
     }
+    
+    // Clear any remaining transformers
+    const transformers = this.layer.find('Transformer')
+    transformers.forEach(transformer => {
+      transformer.destroy()
+    })
+    
+    // Clear the layer
     this.layer.clear()
     this.layer.batchDraw()
+    
+    // Reset selected shape
+    this.config.selectedShape = null
+    
+    // Disable delete button
+    const deleteButton = document.getElementById('delete-button')
+    if (deleteButton) {
+      deleteButton.disabled = true
+    }
+    
+    // Save empty state
     this.saveCanvasState()
-    this.log(`Canvas cleared of ${shapeCount} shapes and state saved`)
+    this.log('All shapes cleared')
   },
 
   saveCanvasState() {
-    if (this.stage && this.history.length > 0) {
+    if (this.stage) {
       try {
+        // Get unique shapes from history (prevent duplicates)
+        const uniqueShapes = [...new Set(this.history)]
+        
         const state = {
-          shapes: this.history.map(shape => {
+          shapes: uniqueShapes.map(shape => {
             const baseData = {
               className: shape.getClassName(),
-              attrs: shape.attrs
+              attrs: shape.attrs,
+              id: shape._id || Date.now() + Math.random().toString(36).substr(2, 9) // Unique ID for each shape
             }
 
             if (shape.getClassName() === 'Label') {
@@ -599,12 +779,26 @@ Module.register("MMM-MagicDraw", {
             return baseData
           })
         }
+        
         this.sendSocketNotification('SAVE_STATE', state)
-        this.log(`Saving canvas state with ${this.history.length} shapes`)
+        this.log(`Saving canvas state with ${uniqueShapes.length} unique shapes`)
       } catch (error) {
         this.logError(`Error preparing canvas state: ${error.toString()}`)
       }
     }
+  },
+
+  loadCanvasState() {
+    this.log('Loading saved state')
+    // Clear existing shapes before loading
+    while(this.history.length > 0) {
+      const shape = this.history.pop()
+      shape.destroy()
+    }
+    this.layer.clear()
+    this.layer.batchDraw()
+    
+    this.sendSocketNotification('LOAD_STATE')
   },
 
   // Add log prefix

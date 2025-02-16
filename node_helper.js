@@ -13,7 +13,8 @@ module.exports = NodeHelper.create({
 
   // Add debounced save to handle frequent save requests
   saveState: function(payload) {
-    this.saveQueue.push(payload)
+    // Clear queue and use only latest state
+    this.saveQueue = [payload]
     if (!this.isSaving) {
       this.processSaveQueue()
     }
@@ -27,16 +28,16 @@ module.exports = NodeHelper.create({
 
     this.isSaving = true
     const latestState = this.saveQueue.pop()
-    this.saveQueue = [] // Clear queue since we're using the latest state
+    this.saveQueue = [] // Clear queue
 
     try {
+      // Write state to file, overwriting any existing state
       fs.writeFileSync(this.statePath, JSON.stringify(latestState, null, 2))
-      console.log(`${this.name} helper: State saved to file`)
+      console.log(`${this.name} helper: State saved with ${latestState.shapes.length} shapes`)
     } catch (error) {
       console.error(`${this.name} helper: Error saving state:`, error)
     }
 
-    // Process next save after a short delay
     setTimeout(() => {
       this.processSaveQueue()
     }, 100)
