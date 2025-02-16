@@ -14,9 +14,10 @@
 
 #shape-controls {
   position: fixed;
-  top: 60px;
-  right: 100px;
-  z-index: 1000;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1002;
   display: flex;
   gap: 10px;
   background-color: rgba(51, 51, 51, 0.9);
@@ -24,15 +25,20 @@
   border-radius: 4px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: 90%;
+  margin: 0 auto;
 }
 
 #shape-selector,
 #text-input,
-#font-size-input {
+#font-size-input,
+#arrow-selector {
   padding: 5px;
   border-radius: 4px;
-  background-color: #333;
-  color: #fff;
+  background-color: #444;
+  color: white;
   border: 1px solid #666;
 }
 
@@ -61,15 +67,13 @@
   padding: 5px 10px;
   border-radius: 4px;
   background-color: #333;
-  color: #fff;
+  color: white;
   border: 1px solid #666;
   cursor: pointer;
-  font-size: 14px;
-  margin-right: 5px;
 }
 
 #clear-button {
-  background-color: #633;  /* Slightly reddish background to indicate destructive action */
+  background-color: #633;
 }
 
 #undo-button:hover,
@@ -88,4 +92,67 @@
 
 #clear-button:active {
   background-color: #522;
+}
+
+#keyboard-container {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(51, 51, 51, 0.95);
+  padding: 10px;
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+  width: 80%;
+  max-width: 800px;
+  display: none; /* Hidden by default */
+}
+
+/* Make sure keyboard is above everything else */
+#keyboard-container.visible {
+  display: block !important;
+}
+
+.keyboard-row {
+  display: flex;
+  justify-content: center;
+  margin: 5px 0;
+  gap: 5px;
+}
+
+.keyboard-key {
+  padding: 10px 15px;
+  border-radius: 5px;
+  background-color: #444;
+  color: white;
+  border: 1px solid #666;
+  cursor: pointer;
+  min-width: 40px;
+  font-size: 16px;
+}
+
+.keyboard-key:hover {
+  background-color: #555;
+}
+
+.keyboard-key:active {
+  background-color: #333;
+}
+
+.space-key {
+  width: 200px;
+}
+
+.backspace-key {
+  width: 80px;
+}
+
+.done-key {
+  width: 80px;
+  background-color: #4CAF50;
+}
+
+.done-key:hover {
+  background-color: #45a049;
 }

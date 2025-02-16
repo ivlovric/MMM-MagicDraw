@@ -5,8 +5,9 @@ Module.register("MMM-MagicDraw", {
     currentShape: 'freehand',
     fontSize: 20,
     textColor: '#000000',
-    labelBackgroundColor: '#333333',
-    pointerDirection: 'none'
+    labelBackgroundColor: '#633333',
+    pointerDirection: 'down',
+    storageKey: 'MMM-MagicDraw-state'  // Key for localStorage
   },
 
   /**
@@ -20,15 +21,19 @@ Module.register("MMM-MagicDraw", {
    * Pseudo-constructor for our module. Initialize stuff here.
    */
   start() {
+    this.log('Starting MagicDraw module')
     this.stage = null
     this.layer = null
     this.isDrawing = false
     this.lastLine = null
     this.currentShape = null
     this.startPos = null
-    this.history = []  // Add history array to store shapes
+    this.history = []
     this.updateDimensions = this.updateDimensions.bind(this)
+    this.saveCanvasState = this.saveCanvasState.bind(this)
+    
     window.addEventListener('resize', this.updateDimensions)
+    window.addEventListener('beforeunload', this.saveCanvasState)
   },
 
   /**
@@ -49,6 +54,7 @@ Module.register("MMM-MagicDraw", {
    * Render the page we're on.
    */
   getDom() {
+    this.log("Creating DOM elements")
     const wrapper = document.createElement("div")
     wrapper.id = "drawing-container"
     
@@ -56,17 +62,83 @@ Module.register("MMM-MagicDraw", {
     const controls = document.createElement("div")
     controls.id = "shape-controls"
     
-    // Add undo button
-    const undoButton = document.createElement("button")
-    undoButton.id = "undo-button"
-    undoButton.innerHTML = "Undo"
-    undoButton.addEventListener('click', () => this.undo())
+    // Create text input first
+    const textInput = document.createElement("input")
+    textInput.type = "text"
+    textInput.id = "text-input"
+    textInput.placeholder = "Enter text..."
     
-    // Add clear all button
-    const clearButton = document.createElement("button")
-    clearButton.id = "clear-button"
-    clearButton.innerHTML = "Clear All"
-    clearButton.addEventListener('click', () => this.clearAll())
+    // Create keyboard container
+    const keyboardContainer = document.createElement("div")
+    keyboardContainer.id = "keyboard-container"
+    keyboardContainer.style.display = "none"
+    this.log("Keyboard container created and hidden by default")
+    
+    // Create keyboard layout
+    const rows = [
+      ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+      ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+      ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+      ['Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.']
+    ]
+    
+    rows.forEach(row => {
+      const keyboardRow = document.createElement("div")
+      keyboardRow.className = "keyboard-row"
+      
+      row.forEach(key => {
+        const keyButton = document.createElement("button")
+        keyButton.className = "keyboard-key"
+        keyButton.textContent = key
+        keyButton.addEventListener('click', (e) => {
+          e.preventDefault()
+          textInput.value += key
+          this.log(`Key pressed: ${key}, current text: ${textInput.value}`)
+        })
+        keyboardRow.appendChild(keyButton)
+      })
+      
+      keyboardContainer.appendChild(keyboardRow)
+    })
+    
+    // Add special keys row
+    const specialRow = document.createElement("div")
+    specialRow.className = "keyboard-row"
+    
+    // Space key
+    const spaceKey = document.createElement("button")
+    spaceKey.className = "keyboard-key space-key"
+    spaceKey.textContent = "Space"
+    spaceKey.addEventListener('click', (e) => {
+      e.preventDefault()
+      textInput.value += ' '
+      this.log("Space key pressed")
+    })
+    
+    // Backspace key
+    const backspaceKey = document.createElement("button")
+    backspaceKey.className = "keyboard-key backspace-key"
+    backspaceKey.textContent = "⌫"
+    backspaceKey.addEventListener('click', (e) => {
+      e.preventDefault()
+      textInput.value = textInput.value.slice(0, -1)
+      this.log(`Backspace pressed, new text: ${textInput.value}`)
+    })
+    
+    // Done key
+    const doneKey = document.createElement("button")
+    doneKey.className = "keyboard-key done-key"
+    doneKey.textContent = "Done"
+    doneKey.addEventListener('click', (e) => {
+      e.preventDefault()
+      keyboardContainer.style.display = "none"
+      this.log("Done pressed - keyboard hidden")
+    })
+    
+    specialRow.appendChild(spaceKey)
+    specialRow.appendChild(backspaceKey)
+    specialRow.appendChild(doneKey)
+    keyboardContainer.appendChild(specialRow)
     
     // Shape selector
     const shapeSelector = document.createElement("select")
@@ -91,6 +163,9 @@ Module.register("MMM-MagicDraw", {
       const option = document.createElement("option")
       option.value = direction
       option.text = direction.charAt(0).toUpperCase() + direction.slice(1)
+      if (direction === 'down') {
+        option.selected = true
+      }
       arrowSelector.appendChild(option)
     })
     
@@ -108,12 +183,6 @@ Module.register("MMM-MagicDraw", {
       this.config.labelBackgroundColor = e.target.value
     })
     
-    // Text input for labels
-    const textInput = document.createElement("input")
-    textInput.type = "text"
-    textInput.id = "text-input"
-    textInput.placeholder = "Enter text..."
-    
     // Font size input
     const fontSizeInput = document.createElement("input")
     fontSizeInput.type = "number"
@@ -126,7 +195,19 @@ Module.register("MMM-MagicDraw", {
       this.config.fontSize = parseInt(e.target.value)
     })
     
-    // Add all controls to the container
+    // Add undo button
+    const undoButton = document.createElement("button")
+    undoButton.id = "undo-button"
+    undoButton.innerHTML = "Undo"
+    undoButton.addEventListener('click', () => this.undo())
+    
+    // Add clear all button
+    const clearButton = document.createElement("button")
+    clearButton.id = "clear-button"
+    clearButton.innerHTML = "Clear All"
+    clearButton.addEventListener('click', () => this.clearAll())
+    
+    // Add all controls to the container in correct order
     controls.appendChild(undoButton)
     controls.appendChild(clearButton)
     controls.appendChild(shapeSelector)
@@ -134,12 +215,33 @@ Module.register("MMM-MagicDraw", {
     controls.appendChild(fontSizeInput)
     controls.appendChild(arrowSelector)
     controls.appendChild(colorPicker)
-    wrapper.appendChild(controls)
     
     // Create container for Konva stage
     const container = document.createElement("div")
     container.id = "konva-container"
+    
+    // Add everything to wrapper in correct order
+    wrapper.appendChild(controls)
+    wrapper.appendChild(keyboardContainer)
     wrapper.appendChild(container)
+    
+    // Prevent default keyboard from showing on mobile
+    textInput.addEventListener('focus', (e) => {
+      e.preventDefault()
+      textInput.blur()
+      keyboardContainer.style.display = "block"
+      this.log("Text input focused - showing keyboard and preventing default")
+    })
+    
+    // Close keyboard when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!keyboardContainer.contains(e.target) && 
+          e.target !== textInput && 
+          keyboardContainer.style.display === "block") {
+        keyboardContainer.style.display = "none"
+        this.log("Outside click detected - hiding keyboard")
+      }
+    })
 
     // Initialize Konva after DOM element is created
     setTimeout(() => {
@@ -149,6 +251,7 @@ Module.register("MMM-MagicDraw", {
       }
     }, 100)
 
+    this.log("DOM creation complete")
     return wrapper
   },
 
@@ -161,6 +264,11 @@ Module.register("MMM-MagicDraw", {
 
     this.layer = new Konva.Layer()
     this.stage.add(this.layer)
+
+    // Load saved state after initializing stage
+    setTimeout(() => {
+      this.loadCanvasState()
+    }, 200)
 
     // Modified drawing functionality
     this.stage.on('mousedown touchstart', () => {
@@ -363,7 +471,10 @@ Module.register("MMM-MagicDraw", {
   },
 
   stop() {
+    this.log('Stopping MagicDraw module')
     window.removeEventListener('resize', this.updateDimensions)
+    window.removeEventListener('beforeunload', this.saveCanvasState)
+    this.saveCanvasState()
   },
 
   updateDimensions() {
@@ -402,5 +513,119 @@ Module.register("MMM-MagicDraw", {
     // Clear the layer
     this.layer.clear()
     this.layer.batchDraw()
+    
+    // Clear saved state
+    localStorage.removeItem(this.config.storageKey)
+    this.log('Canvas cleared and saved state removed')
+  },
+
+  saveCanvasState() {
+    if (this.stage && this.history.length > 0) {
+      try {
+        const state = {
+          shapes: this.history.map(shape => {
+            const baseData = {
+              className: shape.getClassName(),
+              attrs: shape.attrs
+            }
+
+            if (shape.getClassName() === 'Label') {
+              baseData.children = shape.getChildren().map(child => ({
+                className: child.getClassName(),
+                attrs: child.attrs
+              }))
+            }
+
+            return baseData
+          })
+        }
+        const stateString = JSON.stringify(state)
+        localStorage.setItem(this.config.storageKey, stateString)
+        this.log('Canvas state saved with ' + this.history.length + ' shapes')
+      } catch (error) {
+        this.logError('Error saving canvas state: ' + error.toString())
+      }
+    }
+  },
+
+  loadCanvasState() {
+    const savedState = localStorage.getItem(this.config.storageKey)
+    this.log('Loading saved state...')
+    
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState)
+        state.shapes.forEach(shapeData => {
+          let shape
+          
+          if (shapeData.className === 'Label') {
+            shape = new Konva.Label({
+              x: shapeData.attrs.x,
+              y: shapeData.attrs.y,
+              draggable: true
+            })
+
+            shapeData.children.forEach(childData => {
+              let child
+              if (childData.className === 'Tag') {
+                child = new Konva.Tag(childData.attrs)
+              } else if (childData.className === 'Text') {
+                child = new Konva.Text(childData.attrs)
+              }
+              if (child) {
+                shape.add(child)
+              }
+            })
+          } else {
+            const ShapeClass = Konva[shapeData.className]
+            if (ShapeClass) {
+              shape = new ShapeClass(shapeData.attrs)
+              if (shapeData.className === 'Text') {
+                shape.draggable(true)
+              }
+            }
+          }
+
+          if (shape) {
+            this.layer.add(shape)
+            this.history.push(shape)
+          }
+        })
+        
+        this.layer.batchDraw()
+        this.log('Canvas state restored with ' + this.history.length + ' shapes')
+      } catch (error) {
+        this.logError('Error loading canvas state: ' + error.toString())
+      }
+    } else {
+      this.log('No saved state found')
+    }
+  },
+
+  // Add log prefix
+  getLogPrefix() {
+    return `Module ${this.name}: `;
+  },
+
+  // Add logging methods
+  log(msg) {
+    Log.info(this.getLogPrefix() + msg);
+  },
+
+  logError(msg) {
+    Log.error(this.getLogPrefix() + msg);
+  },
+
+  notificationReceived: function(notification, payload, sender) {
+    if (notification === "DOM_OBJECTS_CREATED") {
+      this.log("DOM objects created notification received")
+      const keyboard = document.getElementById('keyboard-container')
+      const textInput = document.getElementById('text-input')
+      if (keyboard && textInput) {
+        this.log("Keyboard and text input elements found in DOM")
+      } else {
+        this.logError("Could not find keyboard or text input elements in DOM")
+      }
+    }
   }
 })
